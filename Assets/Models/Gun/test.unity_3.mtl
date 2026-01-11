@@ -1,0 +1,36 @@
+
+newmtl HandRailGun
+Ka  0.6 0.6 0.6
+Kd  0.6 0.6 0.6
+Ks  0.1 0.1 0.1
+d  1.0
+Ns  150.0
+illum 2
+map_Kd HandRailGun_low_all1_HandRailGun_AlbedoTransparency.tga
+map_Bump HandRailGun_low_all1_HandRailGun_Normal.tga
+
+
+
+
+newmtl HandRailGun_glass
+Ka  0.6 0.6 0.6
+Kd  0.6 0.6 0.6
+Ks  0.1 0.1 0.1
+d  1.0
+Ns  150.0
+illum 2
+
+
+
+
+newmtl HandRailGun_screen
+Ka  0.6 0.6 0.6
+Kd  0.6 0.6 0.6
+Ks  0.1 0.1 0.1
+d  1.0
+Ns  150.0
+illum 2
+map_Kd lcd.png
+
+
+
