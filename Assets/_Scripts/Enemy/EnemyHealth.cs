@@ -14,6 +14,10 @@ public class EnemyHealth : MonoBehaviour
     private Renderer enemyRenderer;
     private Material[] originalMaterials; 
     private Coroutine flashCoroutine;
+    
+    [Header("Audio")]
+    public AudioSource enemyAudioSource;
+    public AudioClip hitSound;
 
     void Start()
     {
@@ -29,17 +33,19 @@ public class EnemyHealth : MonoBehaviour
     public void TakeDamage(float amount)
     {
         currentHealth -= amount;
+        
+        if (enemyAudioSource != null && hitSound != null)
+        {
+            enemyAudioSource.pitch = Random.Range(0.8f, 1.2f);
+            enemyAudioSource.PlayOneShot(hitSound);
+        }
 
-        // --- YENI EKLENEN KISIM BASLANGIC ---
-        // Hasar alinca yapay zekaya haber ver
         EnemyLineOfSight ai = GetComponent<EnemyLineOfSight>();
         if (ai != null)
         {
             ai.OnDamageTaken();
         }
-        // --- YENI EKLENEN KISIM BITIS ---
 
-        // Efekti oynat
         if (flashMaterial != null && enemyRenderer != null)
         {
             if (flashCoroutine != null) StopCoroutine(flashCoroutine);

@@ -2,20 +2,26 @@ using UnityEngine;
 
 public class EnemyLineOfSight : MonoBehaviour
 {
-    [Header("Ayarlar")]
+    [Header("Vision Settings")]
     public float movementSpeed = 4f;
     public float visionRange = 20f;
+    [Range(5f, 45f)]
+    public float raySpread = 25f;
     
-    [Header("Referanslar")]
+    [Header("Attack Settings")]
+    public float attackRange = 2.0f; 
+    public float attackDamage = 10f; 
+    public float attackRate = 1.5f;  
+    private float nextAttackTime = 0f;
+
+    [Header("References")]
     public Transform playerTarget;
-    public Transform eyeTransform;
+    public Transform eyeTransform; 
     public LayerMask detectionLayers; 
 
     private Animator anim;
+    private PlayerHealth playerHealthScript; 
     
-    // NOT: isAggressive degiskenini sildik.
-    // Artik ozel bir moda girmiyor, sadece yonunu guncelliyor.
-
     void Start()
     {
         anim = GetComponentInChildren<Animator>();
@@ -23,7 +29,15 @@ public class EnemyLineOfSight : MonoBehaviour
         if (playerTarget == null)
         {
             GameObject p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null) playerTarget = p.transform;
+            if (p != null) 
+            {
+                playerTarget = p.transform;
+            }
+        }
+
+        if (playerTarget != null)
+        {
+            playerHealthScript = playerTarget.GetComponent<PlayerHealth>();
         }
 
         if (eyeTransform == null) eyeTransform = transform;
@@ -33,61 +47,99 @@ public class EnemyLineOfSight : MonoBehaviour
     {
         if (playerTarget == null) return;
         
-        // Burada LookAt YOK. Sadece bizi gorurse veya hasar alirsa donecek.
-        CheckSightAndMove();
+        CheckSightAndLogic();
     }
     
-    // EnemyHealth scripti tarafindan cagrilan fonksiyon
     public void OnDamageTaken()
     {
-        // Hasar aldigi an, player neredeyse oraya don!
         TurnToPlayer();
     }
 
-    // Kod tekrari olmasin diye donme isini ayri fonksiyona koydum
     void TurnToPlayer()
     {
         if (playerTarget == null) return;
-
-        // Sadece Y ekseninde (saga sola) don, yere veya havaya bakma
         Vector3 targetPostition = new Vector3(playerTarget.position.x, transform.position.y, playerTarget.position.z);
         transform.LookAt(targetPostition);
     }
 
-    void CheckSightAndMove()
+    void CheckSightAndLogic()
     {
-        RaycastHit hit;
+        float distanceToPlayer = Vector3.Distance(transform.position, playerTarget.position);
         
-        Vector3 rayOrigin = eyeTransform.position;
-        // SENIN MODEL AYARIN: -Y (Eksi Yesil Ok)
-        Vector3 rayDirection = -eyeTransform.up; 
+        bool canSeePlayer = false;
+        bool isAttacking = false;
 
-        Color rayColor = Color.red;
-        bool goruyorMu = false;
+        Vector3 centerDirection = -eyeTransform.up;
 
-        Debug.DrawRay(rayOrigin, rayDirection * visionRange, Color.red);
+        float[] angles = { 0, -raySpread, raySpread };
 
-        if (Physics.Raycast(rayOrigin, rayDirection, out hit, visionRange, detectionLayers))
+        foreach (float angle in angles)
         {
-            if (hit.collider.CompareTag("Player"))
-            {
-                // Player'i Raycast ile gordugu an:
-                
-                // 1. Yuzunu Player'a netle (ki hareket edersek takibi birakmasin)
-                TurnToPlayer();
+            Vector3 rayDirection = Quaternion.AngleAxis(angle, transform.up) * centerDirection;
+            Vector3 rayOrigin = eyeTransform.position;
 
-                // 2. Ustumuze yuru
+            RaycastHit hit;
+
+            Color debugColor = Color.red;
+
+            if (Physics.Raycast(rayOrigin, rayDirection, out hit, visionRange, detectionLayers))
+            {
+                if (hit.collider.CompareTag("Player"))
+                {
+                    canSeePlayer = true;
+                    debugColor = Color.green;
+                }
+            }
+
+            Debug.DrawRay(rayOrigin, rayDirection * visionRange, debugColor);
+        }
+        
+        if (canSeePlayer)
+        {
+            TurnToPlayer(); 
+
+            if (distanceToPlayer <= attackRange)
+            {
+                isAttacking = true; 
+
+                if (Time.time >= nextAttackTime)
+                {
+                    AttackPlayer();
+                    nextAttackTime = Time.time + attackRate;
+                }
+            }
+            else
+            {
                 transform.position += transform.forward * movementSpeed * Time.deltaTime;
-                
-                // 3. Gorsel geri bildirimler
-                rayColor = Color.green;
-                Debug.DrawRay(rayOrigin, rayDirection * hit.distance, Color.green);
-                
-                goruyorMu = true;
             }
         }
 
-        // Seni goruyorsa Walk, duvar arkasindaysan Idle
-        if (anim != null) anim.SetBool("isWalking", goruyorMu);
+        if (anim != null)
+        {
+            anim.SetBool("isAttacking", isAttacking);
+            
+            anim.SetBool("isWalking", isAttacking ? false : canSeePlayer);
+        }
+    }
+
+    void AttackPlayer()
+    {
+    }
+
+    public void EnemyHitEvent()
+    {
+        if (playerTarget == null || playerHealthScript == null) return;
+
+        float distance = Vector3.Distance(transform.position, playerTarget.position);
+        
+        if (playerHealthScript.isDead) 
+        {
+            return;
+        }
+
+        if (distance <= attackRange + 0.5f)
+        {
+            playerHealthScript.TakeDamage(attackDamage);
+        }
     }
 }

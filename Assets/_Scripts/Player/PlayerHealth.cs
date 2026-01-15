@@ -8,7 +8,7 @@ public class PlayerHealth : MonoBehaviour
     [Header("Health Settings")]
     public float maxHealth = 100f;
     private float currentHealth;
-    private bool isDead = false;
+    public bool isDead = false;
 
     [Header("UI References")]
     public Slider healthSlider;
@@ -16,13 +16,17 @@ public class PlayerHealth : MonoBehaviour
     public float deathDuration = 2.5f;
 
     [Header("Damage Flash Settings")]
-    public Image damageFlashImage; // Kirmizi vignette resmimiz
-    public float flashSpeed = 5f; // Ne kadar hizla sonup gidecek?
-    public Color flashColor = new Color(1f, 0f, 0f, 0.5f); // Kirmizi ve yari seffaf
+    public Image damageFlashImage;
+    public float flashSpeed = 5f;
+    public Color flashColor = new Color(1f, 0f, 0f, 0.5f);
 
     [Header("Death Effect Settings")]
     public Transform playerCamera;
     public float fallAmount = 1.2f;
+    
+    [Header("Audio")]
+    public AudioSource playerAudioSource;
+    public AudioClip hurtSound;
 
     void Start()
     {
@@ -36,7 +40,6 @@ public class PlayerHealth : MonoBehaviour
             deathScreenImage.color = c;
         }
 
-        // Baslangicta kirmizi ekran varsa sifirlayalim
         if (damageFlashImage != null)
         {
             damageFlashImage.color = Color.clear;
@@ -47,23 +50,12 @@ public class PlayerHealth : MonoBehaviour
 
     void Update()
     {
-        // --- YENI KISIM: HASAR EFEKTI ---
-        // Eger kirmizi resim atanmissa
         if (damageFlashImage != null)
         {
-            // Rengi surekli olarak "Color.clear" (tamamen seffaf) olmaya dogru yumusatarak gecir.
-            // Biz hasar alinca rengi kirmizi yapacagiz, burasi onu otomatik silecek.
             damageFlashImage.color = Color.Lerp(damageFlashImage.color, Color.clear, flashSpeed * Time.deltaTime);
         }
-        // -------------------------------
 
         if (isDead) return;
-
-        // --- TEST KODU ---
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            TakeDamage(20);
-        }
     }
 
     public void TakeDamage(float damageAmount)
@@ -72,14 +64,15 @@ public class PlayerHealth : MonoBehaviour
 
         currentHealth -= damageAmount;
 
-        // --- YENI KISIM: HASAR ALINCA KIZART ---
+        if (playerAudioSource != null && hurtSound != null)
+        {
+            playerAudioSource.PlayOneShot(hurtSound);
+        }
+        
         if (damageFlashImage != null)
         {
-            // Resmin rengini aninda belirledigimiz kirmizi tona ayarla.
-            // Update fonksiyonu bunu hemen sondurmeye baslayacak.
             damageFlashImage.color = flashColor;
         }
-        // --------------------------------------
 
         if (currentHealth <= 0)
         {
@@ -90,7 +83,6 @@ public class PlayerHealth : MonoBehaviour
         UpdateHealthUI();
     }
 
-    // ... Kodun geri kalani (Die, DeathSequence vs.) aynen kaliyor ...
     private void UpdateHealthUI()
     {
         if (healthSlider != null)
@@ -109,6 +101,12 @@ public class PlayerHealth : MonoBehaviour
 
         WeaponController silahScripti = GetComponentInChildren<WeaponController>();
         if (silahScripti != null) silahScripti.enabled = false;
+
+        PlayerFootsteps sesScripti = GetComponent<PlayerFootsteps>();
+        if (sesScripti != null)
+        {
+            sesScripti.enabled = false;
+        }
 
         StartCoroutine(DeathSequence());
     }
